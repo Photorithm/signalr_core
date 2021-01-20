@@ -4,7 +4,6 @@ import 'package:http/http.dart';
 import 'package:signalr_core/src/logger.dart';
 import 'package:signalr_core/src/transport.dart';
 import 'package:signalr_core/src/utils.dart';
-
 import 'package:sse_client/sse_client.dart';
 
 class ServerSentEventsTransport implements Transport {
@@ -32,10 +31,10 @@ class ServerSentEventsTransport implements Transport {
   }
 
   @override
-  var onclose;
+  OnClose onclose;
 
   @override
-  var onreceive;
+  OnReceive onreceive;
 
   @override
   Future<void> connect(String url, TransferFormat transferFormat) async {

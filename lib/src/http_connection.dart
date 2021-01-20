@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:signalr_core/src/connection.dart';
 import 'package:signalr_core/src/http_connection_options.dart';
 import 'package:signalr_core/src/logger.dart';
+import 'package:signalr_core/src/transport.dart';
 import 'package:signalr_core/src/transports/long_polling_transport.dart';
 import 'package:signalr_core/src/transports/server_sent_events_transport.dart';
 import 'package:signalr_core/src/transports/web_socket_transport.dart';
-import 'package:signalr_core/src/transport.dart';
-import 'package:meta/meta.dart';
 import 'package:signalr_core/src/utils.dart';
 
 enum ConnectionState {
@@ -162,14 +162,13 @@ class HttpConnection implements Connection {
       await _stopFuture;
 
       return Future.error(Exception(message));
-    } else if (_connectionState as dynamic != ConnectionState.connected) {
+    } else if (_connectionState != ConnectionState.connected) {
       // stop() was called and transitioned the client into the Disconnecting state.
       const message =
           'HttpConnection.startInternal completed gracefully but didn\'t enter the connection into the connected state!';
       _logging(LogLevel.error, message);
       return Future.error(Exception(message));
     }
-
     _connectionStarted = true;
   }
 
@@ -687,7 +686,7 @@ class TransportSendQueue {
       final transportResult = _transportResult;
       _transportResult = null;
 
-      var data;
+      dynamic data;
       if (_buffer.isNotEmpty) {
         data = (_buffer[0] is String)
             ? _buffer.join('')
