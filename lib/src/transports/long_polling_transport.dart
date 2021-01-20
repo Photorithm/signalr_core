@@ -5,22 +5,22 @@ import 'package:signalr_core/signalr_core.dart';
 
 class LongPollingTransport implements Transport {
   final BaseClient _client;
-  final AccessTokenFactory _accessTokenFactory;
+  final AccessTokenFactory? _accessTokenFactory;
   final Logging _log;
   final bool _logMessageContent;
   final bool _withCredentials;
 
-  String _url;
-  bool _running;
-  Future<void> _receiving;
-  Exception _closeError;
+  String? _url;
+  bool _running = false;
+  Future<void>? _receiving;
+  Exception? _closeError;
 
   LongPollingTransport({
-    BaseClient client,
-    AccessTokenFactory accessTokenFactory,
-    Logging log,
-    bool logMessageContent,
-    bool withCredentials,
+    required BaseClient client,
+    AccessTokenFactory? accessTokenFactory,
+    required Logging log,
+    bool logMessageContent = false,
+    bool withCredentials = false,
   })  : _client = client,
         _accessTokenFactory = accessTokenFactory,
         _log = log,
@@ -32,10 +32,10 @@ class LongPollingTransport implements Transport {
   }
 
   @override
-  var onclose;
+  OnClose? onclose;
 
   @override
-  var onreceive;
+  OnReceive? onreceive;
 
   @override
   Future<void> connect(String url, TransferFormat transferFormat) async {
@@ -68,12 +68,12 @@ class LongPollingTransport implements Transport {
       _running = true;
     }
 
-    _receiving = _poll(_url, headers);
+    _receiving = _poll(_url!, headers);
   }
 
-  Future<String> _getAccessToken() async {
+  Future<String?> _getAccessToken() async {
     if (_accessTokenFactory != null) {
-      return await _accessTokenFactory();
+      return await _accessTokenFactory!();
     }
 
     return null;
@@ -117,7 +117,7 @@ class LongPollingTransport implements Transport {
                 '(LongPolling transport) data received. ${getDataDetail(response.body, _logMessageContent)}.');
 
             if (onreceive != null) {
-              onreceive(response.body);
+              onreceive!(response.body);
             }
           } else {
             // This is another way timeout manifest.
@@ -129,8 +129,9 @@ class LongPollingTransport implements Transport {
     } catch (e) {
       if (!_running) {
         // Log but disregard errors that occur after stopping
+        dynamic ex = e;
         _log(LogLevel.trace,
-            '(LongPolling transport) Poll errored after shutdown: ${e.message}');
+            '(LongPolling transport) Poll errored after shutdown: ${ex.message}');
       } else {
         if (e is TimeoutException) {
           // Ignore timeouts and reissue the poll.
@@ -163,7 +164,7 @@ class LongPollingTransport implements Transport {
       _log,
       'LongPolling',
       _client,
-      _url,
+      _url!,
       _accessTokenFactory,
       data,
       _logMessageContent,
@@ -214,7 +215,7 @@ class LongPollingTransport implements Transport {
         logMessage += ' Error: ' + _closeError.toString();
       }
       _log(LogLevel.trace, logMessage);
-      onclose(_closeError);
+      onclose!(_closeError);
     }
   }
 }

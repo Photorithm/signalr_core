@@ -6,11 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:signalr_core/src/connection.dart';
 import 'package:signalr_core/src/http_connection_options.dart';
 import 'package:signalr_core/src/logger.dart';
+import 'package:signalr_core/src/transport.dart';
 import 'package:signalr_core/src/transports/long_polling_transport.dart';
 import 'package:signalr_core/src/transports/server_sent_events_transport.dart';
 import 'package:signalr_core/src/transports/web_socket_transport.dart';
-import 'package:signalr_core/src/transport.dart';
-import 'package:meta/meta.dart';
 import 'package:signalr_core/src/utils.dart';
 
 enum ConnectionState {
@@ -22,22 +21,22 @@ enum ConnectionState {
 
 class NegotiateResponse {
   NegotiateResponse({
-    this.connectionId,
+    required this.connectionId,
+    required this.negotiateVersion,
+    required this.availableTransports,
+    required this.url,
+    required this.accessToken,
     this.connectionToken,
-    this.negotiateVersion,
-    this.availableTransports,
-    this.url,
-    this.accessToken,
     this.error,
   });
 
   final String connectionId;
-  String connectionToken;
-  final int negotiateVersion;
+  String? connectionToken;
+  final int? negotiateVersion;
   final List<AvailableTransport> availableTransports;
   final String url;
   final String accessToken;
-  final String error;
+  final String? error;
 }
 
 extension NegotiateResponseExtensions on NegotiateResponse {
@@ -45,7 +44,7 @@ extension NegotiateResponseExtensions on NegotiateResponse {
     return NegotiateResponse(
       connectionId: json['connectionId'] as String,
       connectionToken: json['connectionToken'] as String,
-      negotiateVersion: json['negotiateVersion'] as int,
+      negotiateVersion: json['negotiateVersion'] as int?,
       availableTransports: AvailableTransportExtensions.listFromJson(
         json['availableTransports'] as List<dynamic>,
       ),
@@ -58,8 +57,8 @@ extension NegotiateResponseExtensions on NegotiateResponse {
 
 class AvailableTransport {
   AvailableTransport({
-    this.transport,
-    this.transferFormats,
+    required this.transport,
+    required this.transferFormats,
   });
 
   final HttpTransportType transport;
@@ -74,11 +73,11 @@ extension AvailableTransportExtensions on AvailableTransport {
       transferFormats: List<dynamic>.from(
               json['transferFormats'] as Iterable<dynamic>)
           .map((value) => TransferFormatExtensions.fromName(value as String))
-          ?.toList(),
+          .toList(),
     );
   }
 
-  static List<AvailableTransport> listFromJson(List<dynamic> json) {
+  static List<AvailableTransport> listFromJson(List<dynamic>? json) {
     return json == null
         ? <AvailableTransport>[]
         : json
@@ -91,47 +90,42 @@ extension AvailableTransportExtensions on AvailableTransport {
 const maxRedirects = 100;
 
 class HttpConnection implements Connection {
-  ConnectionState _connectionState;
-  bool _connectionStarted;
+  ConnectionState _connectionState = ConnectionState.disconnected;
+  bool _connectionStarted = false;
   final http.BaseClient _client;
-  Logging _logging;
+  final Logging _logging;
   final HttpConnectionOptions _options;
-  Transport _transport;
-  Future<void> _startInternalFuture;
-  Future<void> _stopFuture;
-  Completer _stopCompleter;
-  Exception _stopException;
-  AccessTokenFactory _accessTokenFactory;
-  TransportSendQueue _sendQueue;
+  Transport? _transport;
+  Future<void>? _startInternalFuture;
+  Future<void>? _stopFuture;
+  Completer? _stopCompleter;
+  Exception? _stopException;
+  AccessTokenFactory? _accessTokenFactory;
+  TransportSendQueue? _sendQueue;
 
   @override
   final dynamic features = {};
   @override
   String baseUrl;
   @override
-  String connectionId;
+  String? connectionId;
   @override
-  OnReceive onreceive;
+  OnReceive? onreceive;
   @override
-  OnClose onclose;
+  OnClose? onclose;
 
   final int negotiateVersion = 1;
 
   HttpConnection({
-    @required String url,
-    HttpConnectionOptions options,
-  })  : baseUrl = url,
+    required String url,
+    required HttpConnectionOptions options,
+  })   : baseUrl = url,
         _client = (options.client != null)
-            ? options.client
+            ? options.client!
             : http.Client() as http.BaseClient,
-        _options = options {
-    _logging = (options.logging != null) ? options.logging : (l, m) => {};
-    _connectionState = ConnectionState.disconnected;
-    _connectionStarted = false;
-
-    onreceive = null;
-    onclose = null;
-  }
+        _options = options,
+        _logging =
+            (options.logging != null) ? options.logging! : ((l, m) => {});
 
   @override
   Future<void> start({
@@ -183,11 +177,11 @@ class HttpConnection implements Connection {
     _sendQueue ??= TransportSendQueue(transport: _transport);
 
     // Transport will not be null if state is connected
-    return _sendQueue.send(data);
+    return _sendQueue!.send(data);
   }
 
   @override
-  Future<void> stop({Exception exception}) async {
+  Future<void> stop({Exception? exception}) async {
     if (_connectionState == ConnectionState.disconnected) {
       _logging(LogLevel.debug,
           'Call to HttpConnection.stop(${exception.toString()}) ignored because the connection is already in the disconnected state.');
@@ -204,13 +198,13 @@ class HttpConnection implements Connection {
 
     _stopCompleter = Completer();
 
-    _stopFuture = _stopCompleter.future;
+    _stopFuture = _stopCompleter!.future;
 
     await _stopInternal(exception: exception);
     await _stopFuture;
   }
 
-  Future<void> _stopInternal({Exception exception}) async {
+  Future<void> _stopInternal({Exception? exception}) async {
     // Set exception as soon as possible otherwise there is a race between
     // the transport closing and providing an exception and the exception from a close message
     // We would prefer the close message exception.
@@ -237,7 +231,7 @@ class HttpConnection implements Connection {
     // stop was called during start() and start() failed.
     if (_transport != null) {
       try {
-        await _transport.stop();
+        await _transport!.stop();
       } catch (e) {
         _logging(LogLevel.error,
             'HttpConnection.transport.stop() threw error \'${e.toString()}\'.');
@@ -252,7 +246,7 @@ class HttpConnection implements Connection {
     }
   }
 
-  void _stopConnection({Exception exception}) {
+  void _stopConnection({Exception? exception}) {
     _logging(LogLevel.debug,
         'HttpConnection.stopConnection(${exception.toString()}) called while in state ${_connectionState.toString()}.');
 
@@ -278,7 +272,7 @@ class HttpConnection implements Connection {
     if (_connectionState == ConnectionState.disconnecting) {
       // A call to stop() induced this call to stopConnection and needs to be completed.
       // Any stop() awaiters will be scheduled to continue after the onclose callback fires.
-      _stopCompleter.complete();
+      _stopCompleter!.complete();
     }
 
     if (_exception != null) {
@@ -289,7 +283,7 @@ class HttpConnection implements Connection {
     }
 
     if (_sendQueue != null) {
-      _sendQueue.stop().catchError((e) => _logging(LogLevel.error,
+      _sendQueue!.stop().catchError((e) => _logging(LogLevel.error,
           'TransportSendQueue.stop() threw error \'${e.toString()}\'.'));
       _sendQueue = null;
     }
@@ -301,7 +295,7 @@ class HttpConnection implements Connection {
       _connectionStarted = false;
       try {
         if (onclose != null) {
-          onclose(_exception);
+          onclose!(_exception);
         }
       } catch (e) {
         _logging(LogLevel.error,
@@ -310,7 +304,7 @@ class HttpConnection implements Connection {
     }
   }
 
-  Future<void> _startInternal({@required TransferFormat transferFormat}) async {
+  Future<void> _startInternal({required TransferFormat transferFormat}) async {
     // Store the original base url and the access token factory since they may change
     // as part of negotiating
     var url = baseUrl;
@@ -398,10 +392,9 @@ class HttpConnection implements Connection {
     final headers = {};
 
     if (_accessTokenFactory != null) {
-      final token = await _accessTokenFactory();
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-      }
+      final token = await _accessTokenFactory!();
+
+      headers['Authorization'] = 'Bearer $token';
     }
 
     final negotiateUrl = _resolveNegotiateUrl(url);
@@ -424,7 +417,7 @@ class HttpConnection implements Connection {
           json.decode(response.body) as Map<String, dynamic>);
 
       if ((negotiateResponse.negotiateVersion != null) &&
-          negotiateResponse.negotiateVersion < 1) {
+          negotiateResponse.negotiateVersion! < 1) {
         negotiateResponse.connectionToken = negotiateResponse.connectionId;
       }
 
@@ -451,14 +444,15 @@ class HttpConnection implements Connection {
     return negotiateUrl;
   }
 
-  Future<void> _startTransport({String url, TransferFormat transferFormat}) {
-    _transport
+  Future<void> _startTransport(
+      {required String url, required TransferFormat transferFormat}) {
+    _transport!
       ..onreceive = onreceive
       ..onclose = (e) => _stopConnection(exception: e);
-    return _transport.connect(url, transferFormat);
+    return _transport!.connect(url, transferFormat);
   }
 
-  static String _createConnectUrl(String url, String connectionToken) {
+  static String _createConnectUrl(String url, String? connectionToken) {
     if (connectionToken == null) {
       return url;
     }
@@ -500,7 +494,7 @@ class HttpConnection implements Connection {
 
     final transportExceptions = [];
     final transports = negotiateResponse.availableTransports;
-    var negotiate = negotiateResponse;
+    NegotiateResponse? negotiate = negotiateResponse;
 
     for (var endpoint in transports) {
       _connectionState = ConnectionState.connecting;
@@ -530,7 +524,7 @@ class HttpConnection implements Connection {
             url: connectUrl,
             transferFormat: requestedTransferFormat,
           );
-          connectionId = negotiate.connectionId;
+          connectionId = negotiate!.connectionId;
           return Future.value(null);
         } catch (e) {
           _logging(LogLevel.error,
@@ -598,7 +592,7 @@ class HttpConnection implements Connection {
     }
   }
 
-  Transport _constructTransport(HttpTransportType transport) {
+  Transport? _constructTransport(HttpTransportType transport) {
     switch (transport) {
       case HttpTransportType.none:
         break;
@@ -630,12 +624,12 @@ class HttpConnection implements Connection {
 
 class TransportSendQueue {
   final List<dynamic> _buffer = [];
-  Completer _sendBufferedData;
+  late Completer _sendBufferedData;
   bool _executing = true;
-  Completer _transportResult;
-  Future<void> _sendLoopPromise;
+  late Completer? _transportResult;
+  late Future<void> _sendLoopPromise;
 
-  final Transport transport;
+  final Transport? transport;
 
   TransportSendQueue({this.transport}) {
     _sendBufferedData = Completer();
@@ -647,7 +641,7 @@ class TransportSendQueue {
   Future<void> send(dynamic data) {
     _bufferData(data);
     _transportResult ??= Completer();
-    return _transportResult.future;
+    return _transportResult!.future;
   }
 
   Future<void> stop() {
@@ -676,7 +670,7 @@ class TransportSendQueue {
 
       if (!_executing) {
         if (_transportResult != null) {
-          _transportResult.completeError(Exception('Connection stopped.'));
+          _transportResult!.completeError(Exception('Connection stopped.'));
         }
 
         break;
@@ -687,7 +681,7 @@ class TransportSendQueue {
       final transportResult = _transportResult;
       _transportResult = null;
 
-      var data;
+      dynamic data;
       if (_buffer.isNotEmpty) {
         data = (_buffer[0] is String)
             ? _buffer.join('')
@@ -696,10 +690,10 @@ class TransportSendQueue {
         _buffer.clear();
 
         try {
-          await transport.send(data);
-          transportResult.complete();
+          await transport!.send(data);
+          transportResult!.complete();
         } catch (error) {
-          transportResult.completeError(error);
+          transportResult!.completeError(error);
         }
       }
     }

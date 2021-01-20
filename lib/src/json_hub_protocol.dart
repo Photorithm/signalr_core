@@ -23,50 +23,45 @@ class JsonHubProtocol implements HubProtocol {
   @override
   List<HubMessage> parseMessages(dynamic input, Logging logging) {
     // Only JsonContent is allowed.
-    if (!(input is String)) {
+    if (!(input is String?)) {
       throw Exception(
           'Invalid input for JSON hub protocol. Expected a string.');
     }
 
-    final jsonInput = input as String;
     final hubMessages = <HubMessage>[];
 
     if (input == null) {
       return hubMessages;
     }
 
+    final jsonInput = input;
+
     // Parse the messages
     final messages = TextMessageFormat.parse(jsonInput);
     for (var message in messages) {
-      final jsonData = json.decode(message);
-      final messageType =
-          _getMessageTypeFromJson(jsonData as Map<String, dynamic>);
+      final jsonData = json.decode(message) as Map<String, dynamic>;
+      final messageType = _getMessageTypeFromJson(jsonData);
       HubMessage parsedMessage;
 
       switch (messageType) {
         case MessageType.invocation:
-          parsedMessage = InvocationMessageExtensions.fromJson(
-              jsonData as Map<String, dynamic>);
+          parsedMessage = InvocationMessageExtensions.fromJson(jsonData);
           _isInvocationMessage(parsedMessage as InvocationMessage);
           break;
         case MessageType.streamItem:
-          parsedMessage = StreamItemMessageExtensions.fromJson(
-              jsonData as Map<String, dynamic>);
+          parsedMessage = StreamItemMessageExtensions.fromJson(jsonData);
           _isStreamItemMessage(parsedMessage as StreamItemMessage);
           break;
         case MessageType.completion:
-          parsedMessage = CompletionMessageExtensions.fromJson(
-              jsonData as Map<String, dynamic>);
+          parsedMessage = CompletionMessageExtensions.fromJson(jsonData);
           _isCompletionMessage(parsedMessage as CompletionMessage);
           break;
         case MessageType.ping:
-          parsedMessage =
-              PingMessageExtensions.fromJson(jsonData as Map<String, dynamic>);
+          parsedMessage = PingMessageExtensions.fromJson(jsonData);
           // Single value, no need to validate
           break;
         case MessageType.close:
-          parsedMessage =
-              CloseMessageExtensions.fromJson(jsonData as Map<String, dynamic>);
+          parsedMessage = CloseMessageExtensions.fromJson(jsonData);
           // All optional values, no need to validate
           break;
         default:
@@ -74,7 +69,7 @@ class JsonHubProtocol implements HubProtocol {
           logging(
               LogLevel.information,
               'Unknown message type \'' +
-                  parsedMessage.type.toString() +
+                  messageType.toString() +
                   '\' ignored.');
           continue;
       }
@@ -86,38 +81,32 @@ class JsonHubProtocol implements HubProtocol {
 
   /// Writes the specified [HubMessage] to a string and returns it.
   @override
-  String writeMessage(HubMessage message) {
+  String? writeMessage(HubMessage message) {
     switch (message.type) {
       case MessageType.undefined:
         break;
       case MessageType.invocation:
         return TextMessageFormat.write(
             json.encode((message as InvocationMessage).toJson()));
-        break;
+
       case MessageType.streamItem:
         return TextMessageFormat.write(
             json.encode((message as StreamItemMessage).toJson()));
-        break;
       case MessageType.completion:
         return TextMessageFormat.write(
             json.encode((message as CompletionMessage).toJson()));
-        break;
       case MessageType.streamInvocation:
         return TextMessageFormat.write(
             json.encode((message as StreamInvocationMessage).toJson()));
-        break;
       case MessageType.cancelInvocation:
         return TextMessageFormat.write(
             json.encode((message as CancelInvocationMessage).toJson()));
-        break;
       case MessageType.ping:
         return TextMessageFormat.write(
             json.encode((message as PingMessage).toJson()));
-        break;
       case MessageType.close:
         return TextMessageFormat.write(
             json.encode((message as CloseMessage).toJson()));
-        break;
       default:
         break;
     }
@@ -188,7 +177,7 @@ extension InvocationMessageExtensions on InvocationMessage {
     return InvocationMessage(
       target: json['target'] as String,
       arguments:
-          (json['arguments'] as List)?.map((item) => item as Object)?.toList(),
+          (json['arguments'] as List?)?.map((item) => item as Object).toList(),
       headers: json['headers'] as Map<String, String>,
       invocationId: json['invocationId'] as String,
       streamIds: json['streamIds'] as List<String>,
@@ -279,7 +268,7 @@ extension PingMessageExtensions on PingMessage {
 
 extension CloseMessageExtensions on CloseMessage {
   static CloseMessage fromJson(Map<String, dynamic> json) {
-    return CloseMessage(error: json['error'] as String);
+    return CloseMessage(error: json['error'] as String?);
   }
 
   Map<String, dynamic> toJson() {

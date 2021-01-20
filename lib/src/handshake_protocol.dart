@@ -6,8 +6,8 @@ import 'package:tuple/tuple.dart';
 
 class HandshakeRequestMessage {
   HandshakeRequestMessage({
-    this.protocol,
-    this.version,
+    required this.protocol,
+    required this.version,
   });
 
   final String protocol;
@@ -17,10 +17,10 @@ class HandshakeRequestMessage {
 class HandshakeResponseMessage {
   HandshakeResponseMessage({
     this.error,
-    this.minorVersion,
+    required this.minorVersion,
   });
 
-  final String error;
+  final String? error;
   final int minorVersion;
 }
 

@@ -17,15 +17,16 @@ void main() {
         retryReason: Exception(),
       );
 
-      expect(builder.reconnectPolicy.nextRetryDelayInMilliseconds(retryContext),
+      expect(
+          builder.reconnectPolicy!.nextRetryDelayInMilliseconds(retryContext),
           delay);
     }
   });
 
   test('withAutomaticReconnect uses custom retryDelays when provided', () {
     final customRetryDelays = [3, 1, 4, 1, 5, 9];
-    final builder =
-        HubConnectionBuilder().withAutomaticReconnect(customRetryDelays);
+    final builder = HubConnectionBuilder().withAutomaticReconnect(
+        retryPolicy: DefaultReconnectPolicy(retryDelays: customRetryDelays));
 
     var retryCount = 0;
     for (var delay in customRetryDelays) {
@@ -35,7 +36,8 @@ void main() {
         retryReason: Exception(),
       );
 
-      expect(builder.reconnectPolicy.nextRetryDelayInMilliseconds(retryContext),
+      expect(
+          builder.reconnectPolicy!.nextRetryDelayInMilliseconds(retryContext),
           delay);
     }
 
@@ -53,7 +55,7 @@ void main() {
   test('withAutomaticReconnect uses a custom RetryPolicy when provided', () {
     final customRetryDelays = [127, 0, 0, 1];
     final builder = HubConnectionBuilder().withAutomaticReconnect(
-        DefaultReconnectPolicy(retryDelays: customRetryDelays));
+        retryPolicy: DefaultReconnectPolicy(retryDelays: customRetryDelays));
 
     var retryCount = 0;
     for (var delay in customRetryDelays) {
@@ -63,7 +65,8 @@ void main() {
         retryReason: Exception(),
       );
 
-      expect(builder.reconnectPolicy.nextRetryDelayInMilliseconds(retryContext),
+      expect(
+          builder.reconnectPolicy!.nextRetryDelayInMilliseconds(retryContext),
           delay);
     }
 

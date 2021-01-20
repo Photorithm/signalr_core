@@ -1,16 +1,18 @@
+import 'package:meta/meta.dart';
 import 'package:signalr_core/src/retry_policy.dart';
 
 const DefaultRetryDelaysInMilliseconds = [0, 2000, 10000, 30000, null];
 
+@immutable
 class DefaultReconnectPolicy implements RetryPolicy {
-  DefaultReconnectPolicy({
+  const DefaultReconnectPolicy({
     this.retryDelays = DefaultRetryDelaysInMilliseconds,
   });
 
-  final List<int> retryDelays;
+  final List<int?> retryDelays;
 
   @override
-  int nextRetryDelayInMilliseconds(RetryContext retryContext) {
+  int? nextRetryDelayInMilliseconds(RetryContext retryContext) {
     return retryDelays[retryContext.previousRetryCount];
   }
 }

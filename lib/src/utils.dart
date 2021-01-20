@@ -6,7 +6,7 @@ import 'package:signalr_core/src/logger.dart';
 import 'package:tuple/tuple.dart';
 
 typedef OnReceive = void Function(dynamic data);
-typedef OnClose = void Function(Exception error);
+typedef OnClose = void Function(Exception? error);
 typedef AccessTokenFactory = Future<String> Function();
 typedef Logging = void Function(LogLevel level, String message);
 
@@ -47,7 +47,7 @@ Future<void> sendMessage(
     String transportName,
     BaseClient client,
     String url,
-    AccessTokenFactory accessTokenFactory,
+    AccessTokenFactory? accessTokenFactory,
     dynamic content,
     bool logMessageContent,
     bool withCredentials) async {

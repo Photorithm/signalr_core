@@ -2,6 +2,8 @@ import 'package:http/http.dart';
 import 'package:signalr_core/src/transport.dart';
 import 'package:signalr_core/src/utils.dart';
 
+import '../signalr_core.dart';
+
 /// Options provided to the 'withUrl' factory constructor on [HubConnection] to configure options for the HTTP-based transports.
 class HttpConnectionOptions {
   HttpConnectionOptions({
@@ -15,7 +17,7 @@ class HttpConnectionOptions {
   });
 
   /// An [BaseClient] that will be used to make HTTP requests.
-  final BaseClient client;
+  final BaseClient? client;
 
   /// An [HttpTransportType] or [Transport] value specifying the transport to use for the connection.
   final dynamic transport;
@@ -23,12 +25,12 @@ class HttpConnectionOptions {
   /// Configures the logger used for logging.
   ///
   /// Provide an [Logger] instance, and log messages will be logged via that instance.
-  final Logging logging;
+  final Logging? logging;
 
   /// A function that provides an access token required for HTTP Bearer authentication.
   ///
   /// A string containing the access token, or a Future that resolves to a string containing the access token.
-  final AccessTokenFactory accessTokenFactory;
+  final AccessTokenFactory? accessTokenFactory;
 
   /// A boolean indicating if message content should be logged.
   ///

@@ -1,14 +1,14 @@
 /// An abstraction that controls when the client attempts to reconnect and how many attempts to do so.
 abstract class RetryPolicy {
   /// Called after the transport loses the connection.
-  int nextRetryDelayInMilliseconds(RetryContext retryContext);
+  int? nextRetryDelayInMilliseconds(RetryContext retryContext);
 }
 
 class RetryContext {
   const RetryContext({
-    this.previousRetryCount,
-    this.elapsedMilliseconds,
-    this.retryReason,
+    required this.previousRetryCount,
+    required this.elapsedMilliseconds,
+    required this.retryReason,
   });
 
   /// The number of consecutive failed tries so far.
