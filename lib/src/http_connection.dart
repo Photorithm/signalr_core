@@ -411,7 +411,7 @@ class HttpConnection implements Connection {
     headers['Content-Type'] = 'text/plain;charset=UTF-8';
 
     try {
-      final response = await _client.post(negotiateUrl,
+      final response = await _client.post(Uri.parse(negotiateUrl),
           headers: Map<String, String>.from(headers));
 
       if (response.statusCode != 200) {
